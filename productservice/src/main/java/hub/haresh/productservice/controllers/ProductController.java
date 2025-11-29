@@ -1,60 +1,64 @@
 package hub.haresh.productservice.controllers;
 
-import hub.haresh.productservice.dtos.ProductRequest;
-import hub.haresh.productservice.dtos.ProductResponse;
+import hub.haresh.productservice.commons.AuthenticationCommons;
+import hub.haresh.productservice.dtos.CreateProductRequestDto;
+import hub.haresh.productservice.dtos.UserDto;
+import hub.haresh.productservice.exceptions.InvalidTokenException;
+import hub.haresh.productservice.exceptions.ProductNotFoundException;
+import hub.haresh.productservice.models.Product;
 import hub.haresh.productservice.services.ProductService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import jakarta.annotation.Nullable;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/products")
 public class ProductController {
 
-    private final ProductService productService;
+    private ProductService productService;
+    private AuthenticationCommons authenticationCommons;
 
-    @PostMapping
-    public ResponseEntity<ProductResponse> createProduct(@RequestBody ProductRequest productRequest) {
-        return new ResponseEntity<ProductResponse>(productService.createProduct(productRequest),
-                HttpStatus.CREATED);
+    public ProductController(@Qualifier("databaseProductService") ProductService productService,
+            AuthenticationCommons authenticationCommons) {
+        this.productService = productService;
+        this.authenticationCommons = authenticationCommons;
     }
 
-    @GetMapping
-    public ResponseEntity<List<ProductResponse>> getProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    @GetMapping("/products")
+    public ResponseEntity<List<Product>> getAllProducts() {
+        List<Product> products = productService.getAllProducts();
+        ResponseEntity<List<Product>> responseEntity = new ResponseEntity<>(products,
+                HttpStatusCode.valueOf(200));
+
+        return responseEntity;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ProductResponse> getProductById(
-                                    @PathVariable String id) {
-        return productService.getProductById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    @GetMapping("/products/{id}")
+    public Product getProductDetails(@PathVariable("id") Long id,
+            @Nullable @RequestHeader("Authorization") String token)
+            throws InvalidTokenException, ProductNotFoundException {
+        UserDto userDto = authenticationCommons.validateToken(token);
+        if (userDto == null) {
+            throw new InvalidTokenException();
+        }
+
+        return productService.getProductDetails(id);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ProductResponse> updateProduct(
-            @PathVariable Long id,
-            @RequestBody ProductRequest productRequest) {
-        return productService.updateProduct(id, productRequest)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
+    @PostMapping("/products")
+    public ResponseEntity<Product> createProduct(@RequestBody CreateProductRequestDto requestDto) {
+        Product product = productService.createProduct(
+                requestDto.getTitle(),
+                requestDto.getDescription(),
+                requestDto.getImage(),
+                requestDto.getPrice(),
+                requestDto.getCategory());
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        boolean deleted = productService.deleteProduct(id);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        ResponseEntity<Product> responseEntity = new ResponseEntity<>(product, HttpStatusCode.valueOf(201));
 
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<List<ProductResponse>> searchProducts(@RequestParam String keyword) {
-        return ResponseEntity.ok(productService.searchProducts(keyword));
+        return responseEntity;
     }
 }

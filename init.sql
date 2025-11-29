@@ -1,0 +1,2 @@
+CREATE DATABASE IF NOT EXISTS productservice;
+CREATE DATABASE IF NOT EXISTS userservicesep24;
