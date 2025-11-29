@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hub.haresh.orderservice.dto.CreateOrderRequestDto;
 import hub.haresh.orderservice.dto.OrderResponseDto;
+import hub.haresh.orderservice.exceptions.OrderNotFoundException;
 import hub.haresh.orderservice.model.Order;
 import hub.haresh.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,10 +14,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,38 +43,33 @@ class OrderServiceTest {
     @InjectMocks
     private OrderService orderService;
 
-    private CreateOrderRequestDto createOrderRequestDto;
     private Order order;
+    private CreateOrderRequestDto createOrderRequestDto;
 
     @BeforeEach
     void setUp() {
-        createOrderRequestDto = new CreateOrderRequestDto();
-        createOrderRequestDto.setUserId(1L);
-        createOrderRequestDto.setProductId(1L);
-        createOrderRequestDto.setQuantity(2);
-
         order = new Order();
         order.setId(1L);
         order.setUserId(1L);
         order.setProductId(1L);
-        order.setQuantity(2);
+        order.setQuantity(5);
         order.setStatus("PENDING");
+
+        createOrderRequestDto = new CreateOrderRequestDto();
+        createOrderRequestDto.setUserId(1L);
+        createOrderRequestDto.setProductId(1L);
+        createOrderRequestDto.setQuantity(5);
     }
 
     @Test
     void createOrder_Success() throws JsonProcessingException {
-        // Mock Product Service call
         when(restTemplate.getForObject(eq("http://localhost:8081/products/1"), eq(Object.class)))
                 .thenReturn(new Object());
-
-        // Mock User Service call
         when(restTemplate.getForObject(eq("http://localhost:8080/users/1"), eq(Object.class)))
                 .thenReturn(new Object());
-
-        // Mock Repository save
+        when(restTemplate.postForEntity(eq("http://localhost:8084/inventory/reduce"), any(), eq(Object.class)))
+                .thenReturn(org.springframework.http.ResponseEntity.ok().build());
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-
-        // Mock ObjectMapper
         when(objectMapper.writeValueAsString(any())).thenReturn("json-string");
 
         OrderResponseDto response = orderService.createOrder(createOrderRequestDto);
@@ -84,14 +85,12 @@ class OrderServiceTest {
     @Test
     void createOrder_ProductNotFound() {
         when(restTemplate.getForObject(eq("http://localhost:8081/products/1"), eq(Object.class)))
-                .thenThrow(new RuntimeException("Product not found"));
+                .thenThrow(new RestClientException("Product not found"));
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            orderService.createOrder(createOrderRequestDto);
-        });
+        assertThrows(RestClientException.class, () -> orderService.createOrder(createOrderRequestDto));
 
-        assertTrue(exception.getMessage().contains("Product not found"));
         verify(orderRepository, never()).save(any(Order.class));
+        verify(kafkaTemplate, never()).send(anyString(), anyString());
     }
 
     @Test
@@ -99,13 +98,28 @@ class OrderServiceTest {
         when(restTemplate.getForObject(eq("http://localhost:8081/products/1"), eq(Object.class)))
                 .thenReturn(new Object());
         when(restTemplate.getForObject(eq("http://localhost:8080/users/1"), eq(Object.class)))
-                .thenThrow(new RuntimeException("User not found"));
+                .thenThrow(new RestClientException("User not found"));
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            orderService.createOrder(createOrderRequestDto);
-        });
+        assertThrows(RestClientException.class, () -> orderService.createOrder(createOrderRequestDto));
 
-        assertTrue(exception.getMessage().contains("User not found"));
         verify(orderRepository, never()).save(any(Order.class));
+        verify(kafkaTemplate, never()).send(anyString(), anyString());
+    }
+
+    @Test
+    void getOrder_Success() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        OrderResponseDto response = orderService.getOrder(1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+    }
+
+    @Test
+    void getOrder_NotFound() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(OrderNotFoundException.class, () -> orderService.getOrder(1L));
     }
 }

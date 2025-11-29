@@ -2,9 +2,11 @@ package hub.haresh.orderservice.service;
 
 import hub.haresh.orderservice.dto.CreateOrderRequestDto;
 import hub.haresh.orderservice.dto.OrderResponseDto;
+import hub.haresh.orderservice.exceptions.OrderNotFoundException;
 import hub.haresh.orderservice.model.Order;
 import hub.haresh.orderservice.repository.OrderRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 
 import java.util.Optional;
 
@@ -30,17 +32,25 @@ public class OrderService {
         // 1. Validate Product
         try {
             restTemplate.getForObject("http://localhost:8081/products/" + requestDto.getProductId(), Object.class);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Product not found or service unavailable: " + e.getMessage());
+        } catch (RestClientException e) {
+            throw new RestClientException("Product service unavailable or product not found", e);
         }
 
         // 2. Validate User
         try {
             restTemplate.getForObject("http://localhost:8080/users/" + requestDto.getUserId(), Object.class);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("User not found or service unavailable: " + e.getMessage());
+        } catch (RestClientException e) {
+            throw new RestClientException("User service unavailable or user not found", e);
+        }
+
+        // 3. Reduce Inventory
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("productId", requestDto.getProductId());
+            payload.put("quantity", requestDto.getQuantity());
+            restTemplate.postForEntity("http://localhost:8084/inventory/reduce", payload, Object.class);
+        } catch (RestClientException e) {
+            throw new RestClientException("Inventory service unavailable or insufficient stock", e);
         }
 
         Order order = new Order();
@@ -74,7 +84,7 @@ public class OrderService {
         if (orderOptional.isPresent()) {
             return OrderResponseDto.fromOrder(orderOptional.get());
         } else {
-            throw new RuntimeException("Order not found with id: " + id);
+            throw new OrderNotFoundException("Order not found with id: " + id);
         }
     }
 }

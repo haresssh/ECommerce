@@ -1,4 +1,4 @@
-package hub.haresh.productservice.dtos;
+package hub.haresh.orderservice.dto;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -2,16 +2,20 @@ package hub.haresh.userservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hub.haresh.userservice.dto.SendEmailDto;
+import hub.haresh.userservice.exceptions.InvalidTokenException;
+import hub.haresh.userservice.exceptions.UserAlreadyExistsException;
+import hub.haresh.userservice.exceptions.UserNotFoundException;
 import hub.haresh.userservice.model.Token;
 import hub.haresh.userservice.model.User;
 import hub.haresh.userservice.repository.TokenRepository;
 import hub.haresh.userservice.repository.UserRepository;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -44,9 +48,7 @@ public class UserServiceImpl implements UserService {
         logger.info("SignUp request received for email: {}", email);
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isPresent()) {
-            // TODO: Throw an exception from here like UserAlreadyExists
-            logger.warn("User already exists: {}", email);
-            return null;
+            throw new UserAlreadyExistsException("User already exists with email: " + email);
         }
 
         User user = new User();
@@ -67,7 +69,6 @@ public class UserServiceImpl implements UserService {
             logger.error("Something went wrong while converting to string", ex);
         }
 
-        // TODO: Put this after saving the user in the DB
         logger.info("Sending email event: {}", sendEmailDtoString);
         kafkaTemplate.send("emailSend", sendEmailDtoString);
 
@@ -78,15 +79,12 @@ public class UserServiceImpl implements UserService {
     public Token login(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
-            // TODO: Throw an exception that user does not exist
-            return null;
+            throw new UserNotFoundException("User not found with email: " + email);
         }
 
         User user = userOptional.get();
-        if (!bCryptPasswordEncoder
-                .matches(password, user.getHashedPassword())) {
-            // TODO: throw an exception that password is wrong
-            return null;
+        if (!bCryptPasswordEncoder.matches(password, user.getHashedPassword())) {
+            throw new RuntimeException("Invalid password");
         }
 
         Token token = createToken(user);
@@ -94,6 +92,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Cacheable(value = "tokens", key = "#tokenValue")
     public User validate(String tokenValue) {
         System.out.println("Validating");
         Optional<Token> tokenOptional = tokenRepository
@@ -103,12 +102,10 @@ public class UserServiceImpl implements UserService {
                         new Date());
 
         if (tokenOptional.isEmpty()) {
-            // TODO: throw an exception TokenInvalidException
-            return null;
+            throw new InvalidTokenException("Invalid or expired token");
         }
 
         Token token = tokenOptional.get();
-
         return token.getUser();
     }
 
@@ -118,12 +115,10 @@ public class UserServiceImpl implements UserService {
                 .findByValueAndDeleted(tokenValue, false);
 
         if (optionalToken.isEmpty()) {
-            // Throw some exception
             return;
         }
 
         Token token = optionalToken.get();
-
         token.setDeleted(true);
         tokenRepository.save(token);
     }
@@ -146,8 +141,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Cacheable(value = "users", key = "#userId")
     public User getUserDetails(Long userId) {
         Optional<User> userOptional = userRepository.findById(userId);
-        return userOptional.orElse(null);
+        if (userOptional.isEmpty()) {
+            throw new UserNotFoundException("User not found with id: " + userId);
+        }
+        return userOptional.get();
     }
 }

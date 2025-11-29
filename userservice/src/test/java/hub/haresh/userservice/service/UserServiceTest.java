@@ -1,5 +1,7 @@
 package hub.haresh.userservice.service;
 
+import hub.haresh.userservice.exceptions.UserAlreadyExistsException;
+import hub.haresh.userservice.exceptions.UserNotFoundException;
 import hub.haresh.userservice.model.User;
 import hub.haresh.userservice.repository.TokenRepository;
 import hub.haresh.userservice.repository.UserRepository;
@@ -66,9 +68,9 @@ class UserServiceTest {
     void signUp_UserAlreadyExists() {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
 
-        User result = userService.signUp("Test User", "test@example.com", "password");
+        assertThrows(UserAlreadyExistsException.class,
+                () -> userService.signUp("Test User", "test@example.com", "password"));
 
-        assertNull(result);
         verify(userRepository, never()).save(any(User.class));
         verify(kafkaTemplate, never()).send(anyString(), anyString());
     }
@@ -87,8 +89,6 @@ class UserServiceTest {
     void getUserDetails_NotFound() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        User result = userService.getUserDetails(1L);
-
-        assertNull(result);
+        assertThrows(UserNotFoundException.class, () -> userService.getUserDetails(1L));
     }
 }
