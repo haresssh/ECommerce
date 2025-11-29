@@ -1,7 +1,7 @@
 package hub.haresh.userservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import hub.haresh.userservice.dto.SendEmailDTO;
+import hub.haresh.userservice.dto.SendEmailDto;
 import hub.haresh.userservice.model.Token;
 import hub.haresh.userservice.model.User;
 import hub.haresh.userservice.repository.TokenRepository;
@@ -10,6 +10,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -23,12 +25,13 @@ public class UserServiceImpl implements UserService {
     private KafkaTemplate<String, String> kafkaTemplate;
     private ObjectMapper objectMapper;
 
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
+
     public UserServiceImpl(
             UserRepository userRepository,
             TokenRepository tokenRepository,
             BCryptPasswordEncoder bCryptPasswordEncoder,
-            KafkaTemplate kafkaTemplate
-    ) {
+            KafkaTemplate kafkaTemplate) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
@@ -38,9 +41,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User signUp(String name, String email, String password) {
+        logger.info("SignUp request received for email: {}", email);
         Optional<User> userOptional = userRepository.findByEmail(email);
-        if(userOptional.isPresent()) {
+        if (userOptional.isPresent()) {
             // TODO: Throw an exception from here like UserAlreadyExists
+            logger.warn("User already exists: {}", email);
             return null;
         }
 
@@ -49,7 +54,7 @@ public class UserServiceImpl implements UserService {
         user.setEmail(email);
         user.setHashedPassword(bCryptPasswordEncoder.encode(password));
 
-        SendEmailDTO sendEmailDto = new SendEmailDTO();
+        SendEmailDto sendEmailDto = new SendEmailDto();
         sendEmailDto.setFromEmail("hp494343@gmail.com");
         sendEmailDto.setToEmail(email);
         sendEmailDto.setSubject("Welcome");
@@ -59,10 +64,11 @@ public class UserServiceImpl implements UserService {
         try {
             sendEmailDtoString = objectMapper.writeValueAsString(sendEmailDto);
         } catch (Exception ex) {
-            System.out.println("Something went wrong while converting to string");
+            logger.error("Something went wrong while converting to string", ex);
         }
 
         // TODO: Put this after saving the user in the DB
+        logger.info("Sending email event: {}", sendEmailDtoString);
         kafkaTemplate.send("emailSend", sendEmailDtoString);
 
         return userRepository.save(user);
@@ -71,13 +77,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public Token login(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
-        if(userOptional.isEmpty()) {
+        if (userOptional.isEmpty()) {
             // TODO: Throw an exception that user does not exist
             return null;
         }
 
         User user = userOptional.get();
-        if(!bCryptPasswordEncoder
+        if (!bCryptPasswordEncoder
                 .matches(password, user.getHashedPassword())) {
             // TODO: throw an exception that password is wrong
             return null;
@@ -96,7 +102,7 @@ public class UserServiceImpl implements UserService {
                         false,
                         new Date());
 
-        if(tokenOptional.isEmpty()) {
+        if (tokenOptional.isEmpty()) {
             // TODO: throw an exception TokenInvalidException
             return null;
         }
@@ -112,7 +118,7 @@ public class UserServiceImpl implements UserService {
                 .findByValueAndDeleted(tokenValue, false);
 
         if (optionalToken.isEmpty()) {
-            //Throw some exception
+            // Throw some exception
             return;
         }
 

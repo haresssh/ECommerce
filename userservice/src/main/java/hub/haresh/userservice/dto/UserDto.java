@@ -9,17 +9,17 @@ import java.util.List;
 
 @Getter
 @Setter
-public class UserDTO {
+public class UserDto {
     private String name;
     private String email;
     private List<Role> roles;
 
-    public static UserDTO fromUser(User user) {
+    public static UserDto fromUser(User user) {
         if (user == null) {
             return null;
         }
 
-        UserDTO userDto = new UserDTO();
+        UserDto userDto = new UserDto();
         userDto.setName(user.getName());
         userDto.setEmail(user.getEmail());
         userDto.setRoles(user.getRoles());

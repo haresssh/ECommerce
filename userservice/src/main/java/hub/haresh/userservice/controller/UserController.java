@@ -1,6 +1,5 @@
 package hub.haresh.userservice.controller;
 
-
 import hub.haresh.userservice.dto.*;
 import hub.haresh.userservice.model.Token;
 import hub.haresh.userservice.model.User;
@@ -8,7 +7,6 @@ import hub.haresh.userservice.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 
 @RestController
 @RequestMapping("/users")
@@ -20,36 +18,35 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public SignUpResponseDTO signup(@RequestBody SignUpRequestDTO requestDto) {
+    public SignUpResponseDto signup(@RequestBody SignUpRequestDto requestDto) {
         User user = userService.signUp(
                 requestDto.getName(),
                 requestDto.getEmail(),
-                requestDto.getPassword()
-        );
+                requestDto.getPassword());
 
-        SignUpResponseDTO responseDto = new SignUpResponseDTO();
+        SignUpResponseDto responseDto = new SignUpResponseDto();
         responseDto.setUser(user);
 
         return responseDto;
     }
 
     @PostMapping("/login")
-    public LoginResponseDTO login(@RequestBody LoginRequestDTO loginRequestDto) {
+    public LoginResponseDto login(@RequestBody LoginRequestDto loginRequestDto) {
         Token token = userService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
-        LoginResponseDTO responseDto = new LoginResponseDTO();
+        LoginResponseDto responseDto = new LoginResponseDto();
         responseDto.setToken(token);
 
         return responseDto;
     }
 
     @PostMapping("/validate")
-    public UserDTO validate(@RequestHeader("Authorization") String token) {
+    public UserDto validate(@RequestHeader("Authorization") String token) {
         User user = userService.validate(token);
-        return UserDTO.fromUser(user);
+        return UserDto.fromUser(user);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody LogoutRequestDTO logoutRequestDto) {
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequestDto logoutRequestDto) {
         userService.logout(logoutRequestDto.getToken());
         return new ResponseEntity<>(HttpStatus.OK);
     }
