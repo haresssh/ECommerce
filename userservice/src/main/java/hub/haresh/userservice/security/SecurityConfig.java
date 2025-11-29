@@ -16,6 +16,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -78,6 +79,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/users/signup").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/{id}").permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.disable())
                 // Form login handles the redirect to the login page from the

@@ -144,4 +144,10 @@ public class UserServiceImpl implements UserService {
 
         return token;
     }
+
+    @Override
+    public User getUserDetails(Long userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        return userOptional.orElse(null);
+    }
 }

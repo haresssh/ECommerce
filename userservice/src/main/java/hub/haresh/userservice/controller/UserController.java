@@ -50,4 +50,13 @@ public class UserController {
         userService.logout(logoutRequestDto.getToken());
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDto> getUserDetails(@PathVariable("id") Long id) {
+        User user = userService.getUserDetails(id);
+        if (user == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(UserDto.fromUser(user), HttpStatus.OK);
+    }
 }

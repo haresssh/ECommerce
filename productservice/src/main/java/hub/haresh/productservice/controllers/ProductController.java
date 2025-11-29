@@ -2,12 +2,11 @@ package hub.haresh.productservice.controllers;
 
 import hub.haresh.productservice.commons.AuthenticationCommons;
 import hub.haresh.productservice.dtos.CreateProductRequestDto;
-import hub.haresh.productservice.dtos.UserDto;
-import hub.haresh.productservice.exceptions.InvalidTokenException;
+
 import hub.haresh.productservice.exceptions.ProductNotFoundException;
 import hub.haresh.productservice.models.Product;
 import hub.haresh.productservice.services.ProductService;
-import jakarta.annotation.Nullable;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +18,9 @@ import java.util.List;
 public class ProductController {
 
     private ProductService productService;
-    private AuthenticationCommons authenticationCommons;
 
-    public ProductController(@Qualifier("databaseProductService") ProductService productService,
-            AuthenticationCommons authenticationCommons) {
+    public ProductController(@Qualifier("databaseProductService") ProductService productService) {
         this.productService = productService;
-        this.authenticationCommons = authenticationCommons;
     }
 
     @GetMapping("/products")
@@ -37,14 +33,7 @@ public class ProductController {
     }
 
     @GetMapping("/products/{id}")
-    public Product getProductDetails(@PathVariable("id") Long id,
-            @Nullable @RequestHeader("Authorization") String token)
-            throws InvalidTokenException, ProductNotFoundException {
-        UserDto userDto = authenticationCommons.validateToken(token);
-        if (userDto == null) {
-            throw new InvalidTokenException();
-        }
-
+    public Product getProductDetails(@PathVariable("id") Long id) throws ProductNotFoundException {
         return productService.getProductDetails(id);
     }
 
