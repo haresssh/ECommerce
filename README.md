@@ -4,13 +4,13 @@ This is a microservices-based E-Commerce application built with Spring Boot, Spr
 
 ## Services
 
-| Service | Port | Description | Swagger UI |
-| :--- | :--- | :--- | :--- |
-| **User Service** | 8080 | Manages user registration, authentication, and profiles. | [Link](http://localhost:8080/swagger-ui.html) |
-| **Product Service** | 8081 | Manages product catalog, categories, and product details. | [Link](http://localhost:8081/swagger-ui.html) |
-| **Notification Service** | 8082 | Handles notifications (e.g., email, SMS) - *In Development*. | N/A |
-| **Order Service** | 8083 | Manages order placement, status updates, and history. | [Link](http://localhost:8083/swagger-ui.html) |
-| **Inventory Service** | 8084 | Manages product stock levels and reservations. | [Link](http://localhost:8084/swagger-ui.html) |
+| Service | Port | Description | 
+| :--- | :--- | :--- | 
+| **User Service** | 8080 | Manages user registration, authentication, and profiles.
+| **Product Service** | 8081 | Manages product catalog, categories, and product details. 
+| **Notification Service** | 8082 | Handles notifications (e.g., email, SMS) - *In Development*. 
+| **Order Service** | 8083 | Manages order placement, status updates, and history. 
+| **Inventory Service** | 8084 | Manages product stock levels and reservations.
 
 ## Infrastructure
 
