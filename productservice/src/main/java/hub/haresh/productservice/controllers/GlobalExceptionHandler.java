@@ -20,8 +20,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDto> handleGenericException(Exception ex) {
+        ex.printStackTrace(); // Log the exception
         ErrorDto errorDto = new ErrorDto();
-        errorDto.setMessage("Something went wrong");
+        errorDto.setMessage("Something went wrong: " + ex.getMessage());
         errorDto.setStatus("INTERNAL_SERVER_ERROR");
         return new ResponseEntity<>(errorDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
